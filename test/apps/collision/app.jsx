@@ -20,8 +20,50 @@ const [LEFT, TOP, RIGHT, BOTTOM] = [0, 1, 2, 3];
 
 class EnhancedTextLayer extends TextLayer {
   filterSubLayer({layer, renderPass}) {
-    const characters = layer.id.includes('characters');
-    return !(characters && renderPass === 'collide');
+    const background = layer.id.includes('background');
+    if (renderPass === 'collide') {
+      return background; // Only draw background layer in collide pass
+    } else {
+      return !background || this.props.getBorderWidth; // Do not draw background layer in other passes
+    }
+  }
+
+  renderLayers() {
+    const PointLayerClass = this.getSubLayerClass('point', ScatterplotLayer);
+    const {data, getFillColor, getLineColor, getPosition, stroked, transitions} = this.props;
+
+    // Create one layer for small points that display all the time and another
+    // (highlight) for larger points that only show with label
+    return [
+      this.props.anchor &&
+        [false, true].map(
+          highlight =>
+            new PointLayerClass(
+              {
+                data,
+                stroked,
+                getFillColor,
+                getLineColor,
+                getPosition,
+
+                getRadius: highlight ? 5 : 2,
+                radiusUnits: 'pixels',
+                lineWidthMinPixels: 1,
+                billboard: true,
+                transitions: transitions && {
+                  getFillColor: transitions.getFillColor,
+                  getLineColor: transitions.getLineColor,
+                  getPosition: transitions.getPosition
+                }
+              },
+              this.getSubLayerProps({
+                id: highlight ? 'highlight-point' : 'point'
+              }),
+              !highlight ? {collideEnabled: false} : {}
+            )
+        ),
+      ...super.renderLayers()
+    ];
   }
 }
 
@@ -29,8 +71,7 @@ class EnhancedTextLayer extends TextLayer {
 export default function App() {
   const [collideEnabled, setCollideEnabled] = useState(true);
   const [borderEnabled, setBorderEnabled] = useState(false);
-  const [showPoints, setShowPoints] = useState(true);
-  const [showLabels, setShowLabels] = useState(true);
+  const [showAnchor, setShowAnchor] = useState(true);
   const [anchor, setAnchor] = useState('start');
   const [baseline, setBaseline] = useState('center');
 
@@ -76,54 +117,47 @@ export default function App() {
   };
 
   const layers = [
-    showPoints && new ScatterplotLayer({id: 'points', getRadius: 2, ...pointProps}),
-    showPoints &&
-      new ScatterplotLayer({
-        id: 'highlighted-points',
-        getRadius: 5,
-        ...pointProps,
+    new EnhancedTextLayer({
+      id: 'collide-labels',
+      data,
+      dataTransform,
 
-        // TODO don't render to collide map
-        extensions: [new CollideExtension()],
-        collideEnabled,
-        collideGroup: 'labels'
-      }),
-    showLabels &&
-      new EnhancedTextLayer({
-        id: 'collide-labels',
-        data,
-        dataTransform,
+      anchor: showAnchor,
 
-        getColor: [44, 48, 50],
-        getSize: fontSize,
-        getPosition,
-        getText,
+      getFillColor: [0, 0, 255],
+      getLineColor: [255, 255, 255],
+      stroked: true,
 
-        // FONT
-        // fontFamily: 'Inter, sans',
-        fontSettings: {sdf: true},
-        outlineColor: [255, 255, 255],
-        outlineWidth: 4,
+      getColor: [44, 48, 50],
+      getSize: fontSize,
+      getPosition,
+      getText,
 
-        getTextAnchor: anchor,
-        getAlignmentBaseline: baseline,
-        // getPixelOffset: [20, 0],
+      // FONT
+      // fontFamily: 'Inter, sans',
+      fontSettings: {sdf: true},
+      outlineColor: [255, 255, 255],
+      outlineWidth: 4,
 
-        getBorderColor: [255, 0, 0, 80],
-        getBorderWidth: borderEnabled ? 1 : 0,
-        getBackgroundColor: [0, 255, 0, 0],
-        background: true,
-        backgroundPadding,
+      getTextAnchor: anchor,
+      getAlignmentBaseline: baseline,
+      getPixelOffset: [20, 0],
 
-        parameters: {depthTest: false},
-        extensions: [new CollideExtension()],
-        collideEnabled,
-        collideGroup: 'labels',
+      getBorderColor: [255, 0, 0, 80],
+      getBorderWidth: borderEnabled ? 1 : 0,
+      getBackgroundColor: [0, 255, 0, 0],
+      background: true,
+      backgroundPadding,
 
-        updateTriggers: {
-          getAlignmentBaseline: [baseline]
-        }
-      })
+      parameters: {depthTest: false},
+      extensions: [new CollideExtension()],
+      collideEnabled,
+      collideGroup: 'labels',
+
+      updateTriggers: {
+        getAlignmentBaseline: [baseline]
+      }
+    })
   ];
 
   return (
@@ -149,12 +183,8 @@ export default function App() {
           Border
         </label>
         <label>
-          <input type="checkbox" checked={showPoints} onChange={() => setShowPoints(!showPoints)} />
-          Show points
-        </label>
-        <label>
-          <input type="checkbox" checked={showLabels} onChange={() => setShowLabels(!showLabels)} />
-          Show labels
+          <input type="checkbox" checked={showAnchor} onChange={() => setShowAnchor(!showAnchor)} />
+          Show anchor
         </label>
         <ObjectSelect title="Anchor" obj={ANCHORS} value={anchor} onSelect={setAnchor} />
         <ObjectSelect title="Baseline" obj={BASELINES} value={baseline} onSelect={setBaseline} />
