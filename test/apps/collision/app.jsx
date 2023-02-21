@@ -18,6 +18,13 @@ const ANCHORS = {start: 'start', middle: 'middle', end: 'end'};
 const BASELINES = {top: 'top', center: 'center', bottom: 'bottom'};
 const [LEFT, TOP, RIGHT, BOTTOM] = [0, 1, 2, 3];
 
+class EnhancedTextLayer extends TextLayer {
+  filterSubLayer({layer, renderPass}) {
+    const characters = layer.id.includes('characters');
+    return !(characters && renderPass === 'collide');
+  }
+}
+
 /* eslint-disable react/no-deprecated */
 export default function App() {
   const [collideEnabled, setCollideEnabled] = useState(true);
@@ -76,13 +83,13 @@ export default function App() {
         getRadius: 5,
         ...pointProps,
 
+        // TODO don't render to collide map
         extensions: [new CollideExtension()],
         collideEnabled,
-        collideWrite: false,
         collideGroup: 'labels'
       }),
     showLabels &&
-      new TextLayer({
+      new EnhancedTextLayer({
         id: 'collide-labels',
         data,
         dataTransform,
@@ -105,20 +112,13 @@ export default function App() {
         getBorderColor: [255, 0, 0, 80],
         getBorderWidth: borderEnabled ? 1 : 0,
         getBackgroundColor: [0, 255, 0, 0],
-        background: true, // Need otherwise no background layer rendered
+        background: true,
         backgroundPadding,
 
         parameters: {depthTest: false},
         extensions: [new CollideExtension()],
         collideEnabled,
         collideGroup: 'labels',
-
-        _subLayerProps: {
-          characters: {
-            // Only render background layer to collideMap
-            collideWrite: false
-          }
-        },
 
         updateTriggers: {
           getAlignmentBaseline: [baseline]

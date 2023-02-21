@@ -57,8 +57,7 @@ export default class CollideEffect implements Effect {
 
     const collideLayers = layers.filter(
       // @ts-ignore
-      ({props: {visible, collideEnabled, collideWrite}}) =>
-        visible && collideEnabled && collideWrite
+      ({props: {visible, collideEnabled}}) => visible && collideEnabled
     ) as Layer<CollideExtensionProps>[];
     if (collideLayers.length === 0) {
       this.channels = {};

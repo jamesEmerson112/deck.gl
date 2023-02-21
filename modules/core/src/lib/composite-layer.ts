@@ -219,7 +219,12 @@ export default abstract class CompositeLayer<PropsT = {}> extends Layer<
       }
     }
 
-    Object.assign(newProps, sublayerProps);
+    Object.assign(
+      newProps,
+      sublayerProps,
+      // experimental feature that allows users to override sublayer props via parent layer prop
+      overridingSublayerProps
+    );
     newProps.id = `${this.props.id}-${sublayerId}`;
     newProps.updateTriggers = {
       all: this.props.updateTriggers?.all,
@@ -237,13 +242,6 @@ export default abstract class CompositeLayer<PropsT = {}> extends Layer<
         });
       }
     }
-
-    // Need to assign overrides last otherwise passThroughProps will change them
-    Object.assign(
-      newProps,
-      // experimental feature that allows users to override sublayer props via parent layer prop
-      overridingSublayerProps
-    );
 
     return newProps;
   }
